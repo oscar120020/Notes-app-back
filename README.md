@@ -72,122 +72,295 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 
 Nest is [MIT licensed](LICENSE).
 
-# NestJS Backend con Rate Limiter
+# NestJS Backend - API de Usuarios y Notas
 
-Este proyecto implementa un rate limiter global usando Redis para limitar las peticiones por IP.
+Backend desarrollado con NestJS que proporciona una API RESTful para gestión de usuarios y notas con autenticación JWT.
 
-## Características
+## 🚀 Características
 
-- Rate limiter global que se aplica a todos los endpoints
-- Almacenamiento en Redis para persistencia de datos
-- Configuración flexible de límites y ventanas de tiempo
-- Headers de rate limiting en las respuestas
-- Detección automática de IP real (soporte para proxies)
+- **Autenticación JWT** con Passport
+- **Gestión de usuarios** con contraseñas cifradas (bcrypt)
+- **Sistema de notas** con relación one-to-many
+- **Validación de datos** con class-validator
+- **Migraciones de base de datos** con TypeORM
+- **CORS configurado** para frontend
+- **PostgreSQL** como base de datos
+- **UUID** para IDs de notas
 
-## Configuración
+## 📋 Requisitos Previos
 
-### Variables de Entorno
+- Node.js (v18 o superior)
+- PostgreSQL
+- npm o yarn
 
-1. Copia el archivo de ejemplo:
+## 🛠️ Instalación
+
+1. **Clonar el repositorio:**
 ```bash
-cp env.example .env
+git clone <repository-url>
+cd nest-backend
 ```
 
-2. Edita el archivo `.env` según tus necesidades:
-```env
-# Redis Configuration
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# Rate Limiter Configuration
-RATE_LIMIT_MAX_REQUESTS=60
-RATE_LIMIT_WINDOW_MS=60
-```
-
-### Configuración por Defecto
-
-- **Máximo de peticiones**: 60 por minuto
-- **Ventana de tiempo**: 60 segundos (1 minuto)
-- **Host de Redis**: localhost
-- **Puerto de Redis**: 6379
-
-## Instalación
-
-1. Instalar dependencias:
+2. **Instalar dependencias:**
 ```bash
 npm install
 ```
 
-2. Iniciar Redis con Docker:
+3. **Configurar variables de entorno:**
 ```bash
-docker-compose up -d
+cp env.example .env
 ```
 
-3. Ejecutar la aplicación:
+Editar `.env` con tus configuraciones:
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=nestuser
+DB_PASSWORD=nestpass
+DB_NAME=nestdb
+
+# JWT
+JWT_SECRET=your-super-secret-key
+
+# Environment
+NODE_ENV=development
+```
+
+4. **Ejecutar migraciones:**
+```bash
+npm run migration:run
+```
+
+5. **Iniciar la aplicación:**
 ```bash
 npm run start:dev
 ```
 
-## Uso
+## 🗄️ Base de Datos
 
-El rate limiter se aplica automáticamente a todos los endpoints. Cuando se excede el límite, la API devuelve un error 429 (Too Many Requests).
+### Migraciones
 
-### Headers de Respuesta
+```bash
+# Generar nueva migración
+npm run migration:generate -- src/migrations/NombreMigracion
 
-- `X-RateLimit-Limit`: Límite máximo de peticiones
-- `X-RateLimit-Remaining`: Peticiones restantes
-- `X-RateLimit-Reset`: Timestamp de cuando se resetea el contador
+# Ejecutar migraciones
+npm run migration:run
 
-### Ejemplo de Respuesta de Error
+# Revertir última migración
+npm run migration:revert
+```
 
+### Estructura de Tablas
+
+**Users:**
+- `id` (Primary Key, Auto Increment)
+- `name` (VARCHAR 100)
+- `email` (VARCHAR 100, Unique)
+- `password` (VARCHAR 255, Hashed)
+- `created_at` (TIMESTAMP)
+- `updated_at` (TIMESTAMP)
+
+**Notes:**
+- `id` (Primary Key, UUID)
+- `title` (VARCHAR 100)
+- `content` (VARCHAR 500)
+- `userId` (Foreign Key)
+- `createdAt` (TIMESTAMP)
+- `updatedAt` (TIMESTAMP)
+
+## 🔐 Autenticación
+
+### Endpoints de Autenticación
+
+#### POST /auth/login
 ```json
 {
-  "statusCode": 429,
-  "message": "Rate limit exceeded. Please try again later.",
-  "error": "Too Many Requests"
+  "email": "usuario@example.com",
+  "password": "password123"
 }
 ```
 
-## Estructura del Proyecto
+**Respuesta:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "name": "Usuario",
+    "email": "usuario@example.com"
+  }
+}
+```
+
+#### GET /auth/profile
+Requiere token JWT en header: `Authorization: Bearer <token>`
+
+**Respuesta:**
+```json
+{
+  "id": 1,
+  "name": "Usuario",
+  "email": "usuario@example.com",
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}
+```
+
+## 👥 Gestión de Usuarios
+
+### Endpoints
+
+- `GET /users` - Obtener todos los usuarios
+- `GET /users/:id` - Obtener usuario por ID
+- `POST /users` - Crear nuevo usuario
+- `PATCH /users/:id` - Actualizar usuario
+- `DELETE /users/:id` - Eliminar usuario
+
+### Crear Usuario
+```json
+{
+  "name": "Nuevo Usuario",
+  "email": "nuevo@example.com",
+  "password": "password123"
+}
+```
+
+## 📝 Gestión de Notas
+
+### Endpoints (Protegidos con JWT)
+
+- `GET /notes` - Obtener notas del usuario autenticado
+- `GET /notes/user/:userId` - Obtener notas por usuario
+- `GET /notes/:id` - Obtener nota por ID
+- `POST /notes/note/user/:userId` - Crear nueva nota
+- `PATCH /notes/:id` - Actualizar nota
+- `DELETE /notes/:id` - Eliminar nota
+
+### Crear Nota
+```json
+{
+  "title": "Mi Nota",
+  "content": "Contenido de la nota",
+  "userId": 1
+}
+```
+
+## 🔧 Scripts Disponibles
+
+```bash
+# Desarrollo
+npm run start:dev
+
+# Producción
+npm run start:prod
+
+# Build
+npm run build
+
+# Tests
+npm run test
+npm run test:e2e
+
+# Migraciones
+npm run migration:generate -- src/migrations/NombreMigracion
+npm run migration:run
+npm run migration:revert
+
+# Linting y Formato
+npm run lint
+npm run format
+```
+
+## 📁 Estructura del Proyecto
 
 ```
 src/
-├── config/
-│   └── rate-limiter.config.ts    # Configuración del rate limiter
-├── middleware/
-│   └── rate-limiter.middleware.ts # Middleware de rate limiting
-├── redis/
-│   ├── redis.module.ts           # Módulo de Redis
-│   └── redis.service.ts          # Servicio de Redis
-└── app.module.ts                 # Módulo principal con middleware global
+├── auth/                    # Autenticación JWT
+│   ├── auth.controller.ts
+│   ├── auth.service.ts
+│   ├── auth.module.ts
+│   ├── jwt.strategy.ts
+│   ├── jwt-auth.guard.ts
+│   └── dto/
+│       └── login.dto.ts
+├── users/                   # Gestión de usuarios
+│   ├── users.controller.ts
+│   ├── users.service.ts
+│   ├── users.module.ts
+│   ├── user.entity.ts
+│   └── dto/
+│       ├── create-user.dto.ts
+│       └── update-user.dto.ts
+├── notes/                   # Gestión de notas
+│   ├── notes.controller.ts
+│   ├── notes.service.ts
+│   ├── notes.module.ts
+│   ├── note.entity.ts
+│   └── dto/
+│       ├── create-note.dto.ts
+│       └── update-note.dto.ts
+├── config/                  # Configuraciones
+│   └── typeorm.config.ts
+├── migrations/              # Migraciones de BD
+├── app.module.ts           # Módulo principal
+└── main.ts                 # Punto de entrada
 ```
 
-## Docker
+## 🌐 CORS
 
-El proyecto incluye un `docker-compose.yml` para ejecutar Redis:
+Configurado para aceptar peticiones desde:
+- `http://localhost:3000` (React/Next.js)
+- `http://localhost:3001` (Puerto alternativo)
+- `http://localhost:5173` (Vite)
+- `http://localhost:4200` (Angular)
+
+## 🔒 Seguridad
+
+- Contraseñas cifradas con bcrypt
+- JWT para autenticación
+- Validación de datos con class-validator
+- CORS configurado
+- Headers de seguridad
+
+## 🧪 Testing
 
 ```bash
-# Iniciar Redis
-docker-compose up -d
+# Tests unitarios
+npm run test
 
-# Ver logs de Redis
-docker-compose logs redis
+# Tests e2e
+npm run test:e2e
 
-# Detener Redis
-docker-compose down
+# Cobertura de tests
+npm run test:cov
 ```
 
-## Personalización
+## 📦 Dependencias Principales
 
-Para cambiar los límites del rate limiter, modifica las variables de entorno o edita `src/config/rate-limiter.config.ts`.
+- `@nestjs/common` - Framework NestJS
+- `@nestjs/typeorm` - Integración con TypeORM
+- `@nestjs/jwt` - JWT para autenticación
+- `@nestjs/passport` - Passport para autenticación
+- `typeorm` - ORM para base de datos
+- `pg` - Driver de PostgreSQL
+- `bcrypt` - Cifrado de contraseñas
+- `class-validator` - Validación de datos
+- `passport-jwt` - Estrategia JWT
 
-Para excluir ciertas rutas del rate limiting, modifica el método `configure` en `src/app.module.ts`:
+## 🤝 Contribuir
 
-```typescript
-configure(consumer: MiddlewareConsumer) {
-  consumer
-    .apply(RateLimiterMiddleware)
-    .exclude('health', 'metrics') // Excluir rutas específicas
-    .forRoutes('*');
-}
-```
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
+
+## 📞 Soporte
+
+Si tienes alguna pregunta o problema, por favor abre un issue en el repositorio.
